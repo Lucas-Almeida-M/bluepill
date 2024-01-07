@@ -32,6 +32,11 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Parse.h"
+//#include "lfs.h"
+//#include "lfs_app.h"
+#include "module_cfg.h"
+#include <stm32f1xx_hal_flash.h>
+#include <stm32f1xx_hal_flash_ex.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -53,14 +58,23 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+//void fill_data(CanPacket *message, uint16_t adc, uint8_t pos, uint8_t sensor);
+void send_sensor_data(uint16_t *adc);
+
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
 #define LD2_Pin GPIO_PIN_13
 #define LD2_GPIO_Port GPIOC
-#define ADC_Pin GPIO_PIN_1
-#define ADC_GPIO_Port GPIOA
+#define ADC0_Pin GPIO_PIN_0
+#define ADC0_GPIO_Port GPIOA
+#define ADC1_Pin GPIO_PIN_1
+#define ADC1_GPIO_Port GPIOA
+#define ADC2_Pin GPIO_PIN_2
+#define ADC2_GPIO_Port GPIOA
+#define ADC3_Pin GPIO_PIN_3
+#define ADC3_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_10
 #define LED_GPIO_Port GPIOB
 

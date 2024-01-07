@@ -21,12 +21,17 @@
 #include "adc.h"
 #include "can.h"
 #include "dma.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "Parse.h"
+#include "stdio.h"
+#include "string.h"
+
+#define BOARD_ID 1
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,8 +52,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint16_t adcint[1] = {0};
-float adc = 0;
+extern module_cfg configs;
+bool aux = 0;
+uint16_t adc_count = 0;
+uint16_t sensorData[4][200] = {0};
+uint16_t adcint[4] = {0};
+float adc_sum[4] = {0};
+uint16_t adc[4] = {0};
 extern uint32_t TxMailbox;
 uint8_t canRX[8] = {};
 uint8_t canTX[8] = {};
@@ -57,6 +67,8 @@ uint8_t canTX[8] = {};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
+
 
 /* USER CODE END PFP */
 
@@ -97,33 +109,64 @@ int main(void)
   MX_CAN_Init();
   MX_USART1_UART_Init();
   MX_ADC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_Base_Start_IT(&htim2);
+
 	HAL_UART_Receive_DMA(&huart1, canRX, 8);
 	HAL_ADCEx_Calibration_Start(&hadc1);
-	HAL_ADC_Start_DMA(&hadc1, &adcint, 1);
+	HAL_ADC_Start_DMA(&hadc1, &adcint, 4);
 
 
-	  uint8_t tx[8] = {1,225,67,68,69,70,71,72};
-	  TxHeader.StdId             = 0x0;     // ID do dispositivo
-	  TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
-	  TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
-	  TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
-	  TxHeader.TransmitGlobalTime = DISABLE;
+//	  uint8_t tx[8] = {1,225,67,68,69,70,71,72};
+//	  TxHeader.StdId             = 0x0;     // ID do dispositivo
+//	  TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
+//	  TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
+//	  TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
+//	  TxHeader.TransmitGlobalTime = DISABLE;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	#ifdef TRANSMITER
-	HAL_Delay(2000);
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, tx, &TxMailbox))
-	{
-		Error_Handler();
-	}
+	  if (aux)
+	  {
+		  memset(&adc, 0, sizeof(adc));
+		  for (int i = 0; i < 200; i++)
+		  {
+		      for (int j = 0; j < 4; j++)
+		      {
+		          if (configs.sensors[j].enable)
+		          {
+		              adc_sum[j] += sensorData[j][i] * 0.005;
+		          }
+		      }
+		  }
+
+		  for (int j = 0; j < 4; j++)
+		  {
+			  if (configs.sensors[j].enable)
+			  {
+				  adc[j] = (uint16_t)adc_sum[j];
+			  }
+		  }
+		  send_sensor_data(adc);
+		  aux = 0;
+	  }
+
+
+	#ifdef TRANSMITER
+//	HAL_Delay(2000);
+//	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+//
+//	if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, tx, &TxMailbox))
+//	{
+//		Error_Handler();
+//	}
 
 	#else
 
@@ -181,6 +224,78 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim->Instance==TIM2)
+	{
+		if (adc_count < 199)
+		{
+			sensorData[0][adc_count] = adcint[0];
+			sensorData[1][adc_count] = adcint[1];
+//			sensorData[2][adc_count] = adcint[2];
+//			sensorData[3][adc_count] = adcint[3];
+			adc_count++;
+		}
+		else
+		{
+			aux = 1;
+			adc_count = 0;
+		}
+	}
+}
+
+void fill_data(CanPacket *message, uint16_t adc, uint8_t pos, uint8_t sensor)
+{
+	message->packet.data[CAN_HEADER + 3*pos] = sensor;
+	message->packet.data[CAN_HEADER + 3*pos + 1] = (uint8_t)(adc && 0xff00) >> 8;
+	message->packet.data[CAN_HEADER + 3*pos + 2] = (uint8_t)(adc && 0x00ff);
+}
+
+void send_sensor_data(uint16_t *adc)
+{
+	uint8_t count = 0;
+	CanPacket message = {0};
+	for (int i = 0; i < SENSOR_NUMBERS ; i++)
+	{
+		if(configs.sensors[i].enable)
+		{
+			message.packet.src = configs.boardID;
+			message.packet.crtl = 0; //revisar
+			fill_data(&message, adc[i], count, i);
+
+			TxHeader.StdId             = DATA;     // ID do dispositivo
+			TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
+			TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
+			TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
+			TxHeader.TransmitGlobalTime = DISABLE;
+			count++;
+		}
+		if (count == 2)
+		{
+			if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, message.packet.data, &TxMailbox))
+			{
+				Error_Handler();
+			}
+			memset(&message, 0, sizeof(CanPacket));
+			count = 0;
+		}
+		else if ( (count == 1) && (i == (SENSOR_NUMBERS - 1) ) )
+		{
+			fill_data(&message, 0xffff, count, 2);
+
+			if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, message.packet.data, &TxMailbox))
+			{
+				Error_Handler();
+			}
+		}
+	}
+}
+
+
+
+
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 #ifdef TRANSMITER
@@ -197,6 +312,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 //	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 #endif
+
+
+
+
+
 
 }
 /* USER CODE END 4 */

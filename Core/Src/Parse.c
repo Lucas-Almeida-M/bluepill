@@ -21,7 +21,7 @@ bool ValidatePacket(uint8_t canID)
 void DecodeUartPacket(CommunicationPacket *comPacket, uint8_t *buffer)
 {
 	comPacket->canID = buffer[0];
-	comPacket->Can.packet.seq = buffer[1];
+	comPacket->Can.packet.src = buffer[1];
 	comPacket->Can.packet.crtl = buffer[2];
 
 	for (int i = 0; i < 5; i++)
@@ -46,7 +46,7 @@ void DecodeCanPacket(uint32_t canID, UartPacket *uartPacket, uint8_t *buffer)// 
 bool CanWritePacket(uint32_t id, uint8_t *buffer, uint8_t can_rtr, uint16_t tamanho)
 {
 
-	TxHeader.StdId             = id;     // ID do dispositivo
+	TxHeader.StdId             = id;             // ID da mensagem
 	TxHeader.RTR               = can_rtr;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
 	TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
 	TxHeader.DLC               = tamanho;      //Tamanho do pacote 0 - 8 bytes

@@ -15,7 +15,7 @@
 #define FILTER_MAX_NUM 14
 
 
-#define CAN_HEADER 1
+#define CAN_HEADER 2
 #define CAN_SIZE 8
 
 
@@ -29,10 +29,10 @@ typedef union // Ini
 
 	enum FilterIds
 	{
-		CANID_BROADCAST = 0x00,
-		CANID_NUCLEO = 0x01,
-		CANID_BLUEPILL1= 0x02,
-		CANID_BLUEPILL2= 0x03,
+		DATA = 0x00,
+		STATUS,
+		CONFIGURATION,
+		RESTART,
 		CANID_COUNT
 
 	} FilterId;
@@ -49,7 +49,7 @@ typedef union CANPACKET
 
 	struct
 	{
-		uint8_t seq;
+		uint8_t src;
 		uint8_t crtl;
 		uint8_t data[CAN_SIZE - CAN_HEADER];
 	} packet;
