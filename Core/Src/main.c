@@ -126,6 +126,7 @@ int main(void)
 //	  TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
 //	  TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
 //	  TxHeader.TransmitGlobalTime = DISABLE;
+	HAL_Delay(2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -228,22 +229,22 @@ void SystemClock_Config(void)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim->Instance==TIM2)
-	{
-		if (adc_count < 199)
-		{
-			sensorData[0][adc_count] = adcint[0];
-			sensorData[1][adc_count] = adcint[1];
-//			sensorData[2][adc_count] = adcint[2];
-//			sensorData[3][adc_count] = adcint[3];
-			adc_count++;
-		}
-		else
-		{
-			aux = 1;
-			adc_count = 0;
-		}
-	}
+//	if(htim->Instance==TIM2)
+//	{
+//		if (adc_count < 199)
+//		{
+//			sensorData[0][adc_count] = adcint[0];
+//			sensorData[1][adc_count] = adcint[1];
+////			sensorData[2][adc_count] = adcint[2];
+////			sensorData[3][adc_count] = adcint[3];
+//			adc_count++;
+//		}
+//		else
+//		{
+//			aux = 1;
+//			adc_count = 0;
+//		}
+//	}
 }
 
 void fill_data(CanPacket *message, uint16_t adc, uint8_t pos, uint8_t sensor)
@@ -261,8 +262,8 @@ void send_sensor_data(uint16_t *adc)
 	{
 		if(configs.sensors[i].enable)
 		{
-			message.packet.src = configs.boardID;
-			message.packet.crtl = 0; //revisar
+			message.packet.ctrl0.control = configs.boardID;
+			message.packet.ctrl1.control = 0; //revisar
 			fill_data(&message, adc[i], count, i);
 
 			TxHeader.StdId             = DATA;     // ID do dispositivo
@@ -313,12 +314,26 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 #endif
 
-
-
-
-
-
 }
+
+void sendCanMsg_test(int delay)
+{
+	  uint8_t tx[7] = {1,2,3,4,5,6,7};
+	  TxHeader.StdId             = 0x0;     // ID do dispositivo
+	  TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
+	  TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
+	  TxHeader.DLC               = 7;      //Tamanho do pacote 0 - 8 bytes
+	  TxHeader.TransmitGlobalTime = DISABLE;
+
+	  int status = HAL_CAN_AddTxMessage(&hcan, &TxHeader, tx, &TxMailbox);
+	  if(status)
+	  {
+		 Error_Handler();
+	  }
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+	  HAL_Delay(delay);
+}
+
 /* USER CODE END 4 */
 
 /**

@@ -77,9 +77,9 @@
 					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1372174153.729480063" name="Parse.h" rcbsApplicability="disable" resourcePath="Core/Inc/Parse.h" toolsToInvoke=""/>
 					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1372174153.2079192714" name="lfs_app.h" rcbsApplicability="disable" resourcePath="Core/Inc/lfs_app.h" toolsToInvoke=""/>
 					<sourceEntries>
+						<entry excluding="ThirdPart/littlefs|ThirdPart/littlefs/tests|ThirdPart/littlefs/scripts|ThirdPart/littlefs/runners|ThirdPart/littlefs/benches|ThirdPart/littlefs/bd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middleware"/>
 						<entry excluding="Src/lfs_app.c|Inc/lfs_app.h" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry excluding="ThirdPart/littlefs|ThirdPart/littlefs/tests|ThirdPart/littlefs/scripts|ThirdPart/littlefs/runners|ThirdPart/littlefs/benches|ThirdPart/littlefs/bd" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middleware"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>

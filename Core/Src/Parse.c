@@ -18,17 +18,7 @@ bool ValidatePacket(uint8_t canID)
     return false;
 }
 
-void DecodeUartPacket(CommunicationPacket *comPacket, uint8_t *buffer)
-{
-	comPacket->canID = buffer[0];
-	comPacket->Can.packet.src = buffer[1];
-	comPacket->Can.packet.crtl = buffer[2];
 
-	for (int i = 0; i < 5; i++)
-	{
-		comPacket->Can.packet.data[i] = buffer[i + 3];
-	}
-}
 
 void DecodeCanPacket(uint32_t canID, UartPacket *uartPacket, uint8_t *buffer)// decodifica o pacote can
 {

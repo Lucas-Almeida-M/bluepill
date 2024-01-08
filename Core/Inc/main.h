@@ -60,7 +60,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 //void fill_data(CanPacket *message, uint16_t adc, uint8_t pos, uint8_t sensor);
 void send_sensor_data(uint16_t *adc);
-
+void sendCanMsg_test(int delay);
 
 /* USER CODE END EFP */
 

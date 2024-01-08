@@ -41,21 +41,41 @@ typedef union // Ini
 
 } FilterList;
 
-
+typedef struct control
+{
+	bool bitControl0 : 1;
+	bool bitControl1 : 1;
+	bool bitControl2 : 1;
+	bool bitControl3 : 1;
+	bool bitControl4 : 1;
+	bool bitControl5 : 1;
+	bool bitControl6 : 1;
+	bool bitControl7 : 1;
+}controlBit;
 
 typedef union CANPACKET
 {
-	uint8_t buffer[CAN_SIZE];
-
+	uint8_t buffer[CAN_SIZE + 1];
 	struct
 	{
-		uint8_t src;
-		uint8_t crtl;
-		uint8_t data[CAN_SIZE - CAN_HEADER];
-	} packet;
+		uint8_t canID;
+		uint8_t seq;
+		union cont
+		{
+			controlBit controlBits;
+			uint8_t control;
+		}ctrl0;
+
+		union cont1
+		{
+			controlBit controlBits;
+			uint8_t control;
+		}ctrl1;
+
+		uint8_t data [CAN_SIZE - CAN_HEADER];
+	}packet;
 
 } CanPacket;
-
 
 
 typedef union UARTPACKET
@@ -73,19 +93,8 @@ typedef union UARTPACKET
 
 
 
-
-typedef struct  {
-
-	uint8_t canID;
-	CanPacket Can;
-
-}CommunicationPacket;
-
-
-
 bool ValidatePacket(uint8_t canID);
 
-void DecodeUartPacket(CommunicationPacket *comPacket, uint8_t *buffer);
 
 void DecodeCanPacket(uint32_t canID, UartPacket *uartPacket, uint8_t *buffer);
 bool CanWritePacket(uint32_t id, uint8_t *buffer, uint8_t can_rtr, uint16_t tamanho);
