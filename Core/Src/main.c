@@ -159,21 +159,6 @@ int main(void)
 		  aux = 0;
 	  }
 
-
-	#ifdef TRANSMITER
-//	HAL_Delay(2000);
-//	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//
-//	if (HAL_CAN_AddTxMessage(&hcan, &TxHeader, tx, &TxMailbox))
-//	{
-//		Error_Handler();
-//	}
-
-	#else
-
-	#endif
-    /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -229,22 +214,22 @@ void SystemClock_Config(void)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-//	if(htim->Instance==TIM2)
-//	{
-//		if (adc_count < 199)
-//		{
-//			sensorData[0][adc_count] = adcint[0];
-//			sensorData[1][adc_count] = adcint[1];
-////			sensorData[2][adc_count] = adcint[2];
-////			sensorData[3][adc_count] = adcint[3];
-//			adc_count++;
-//		}
-//		else
-//		{
-//			aux = 1;
-//			adc_count = 0;
-//		}
-//	}
+	if(htim->Instance==TIM2)
+	{
+		if (adc_count < 199)
+		{
+			sensorData[0][adc_count] = adcint[0];
+			sensorData[1][adc_count] = adcint[1];
+//			sensorData[2][adc_count] = adcint[2];
+//			sensorData[3][adc_count] = adcint[3];
+			adc_count++;
+		}
+		else
+		{
+			aux = 1;
+			adc_count = 0;
+		}
+	}
 }
 
 void fill_data(CanPacket *message, uint16_t adc, uint8_t pos, uint8_t sensor)
