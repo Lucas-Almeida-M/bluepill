@@ -29,10 +29,14 @@ typedef union // Ini
 
 	enum FilterIds
 	{
-		DATA = 0x00,
-		STATUS,
-		CONFIGURATION,
-		RESTART,
+		BROADCAST = 0x00,
+		BOARD_F7 = 0x01,
+		DEVICE_1 = 0X02, // HABILITAR DE ACORDO COM DEVICE
+//		DEVICE_2 = 0X03,
+//		DEVICE_3 = 0X04,
+//		DEVICE_4 = 0X05,
+//		DEVICE_5 = 0X06,
+//		DEVICE_6 = 0X07,
 		CANID_COUNT
 
 	} FilterId;

@@ -29,8 +29,9 @@
 /* USER CODE BEGIN Includes */
 #include "stdio.h"
 #include "string.h"
+#include "math.h"
 
-#define BOARD_ID 1
+
 
 /* USER CODE END Includes */
 
@@ -41,7 +42,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define TRANSMITER
+#define BOARD_ID 1
+#define SAMPLES_PER_TIME 64
+#define OFFSET 1
+#define CORRECTION_FACTOR 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -52,16 +56,25 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-extern module_cfg configs;
-bool aux = 0;
-uint16_t adc_count = 0;
-uint16_t sensorData[4][200] = {0};
+
 uint16_t adcint[4] = {0};
-float adc_sum[4] = {0};
-uint16_t adc[4] = {0};
 extern uint32_t TxMailbox;
 uint8_t canRX[8] = {};
 uint8_t canTX[8] = {};
+extern module_cfg configs;
+bool aux = 0;
+uint16_t adc_count = 0;
+
+extern uint16_t bufferTensao[64];
+extern uint16_t bufferTensaoVA[64];
+extern uint16_t bufferTensaoVB[64];
+extern uint16_t bufferTensaoVC[64];
+SignalQ sgnalQual[3] = {0};
+SensorData sensorData;
+
+
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -115,18 +128,11 @@ int main(void)
 //  HAL_TIM_Base_Start(&htim1);
   HAL_TIM_Base_Start_IT(&htim2);
 
-	HAL_UART_Receive_DMA(&huart1, canRX, 8);
-	HAL_ADCEx_Calibration_Start(&hadc1);
-	HAL_ADC_Start_DMA(&hadc1, &adcint, 4);
+  HAL_UART_Receive_DMA(&huart1, canRX, 8);
+  HAL_ADCEx_Calibration_Start(&hadc1);
+  HAL_ADC_Start_DMA(&hadc1, &adcint, 3);
 
-
-//	  uint8_t tx[8] = {1,225,67,68,69,70,71,72};
-//	  TxHeader.StdId             = 0x0;     // ID do dispositivo
-//	  TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
-//	  TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
-//	  TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
-//	  TxHeader.TransmitGlobalTime = DISABLE;
-	HAL_Delay(2000);
+HAL_Delay(2000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -134,30 +140,41 @@ int main(void)
   while (1)
   {
 
-	  if (aux)
-	  {
-		  memset(&adc, 0, sizeof(adc));
-		  for (int i = 0; i < 200; i++)
-		  {
-		      for (int j = 0; j < 4; j++)
-		      {
-		          if (configs.sensors[j].enable)
-		          {
-		              adc_sum[j] += sensorData[j][i] * 0.005;
-		          }
-		      }
-		  }
+//	  if (aux)
+//	  {
+//		  memset(&adc, 0, sizeof(adc));
+//		  for (int i = 0; i < 200; i++)
+//		  {
+//		      for (int j = 0; j < 4; j++)
+//		      {
+//		          if (configs.sensors[j].enable)
+//		          {
+//		              adc_sum[j] += sensorData[j][i] * 0.005;
+//		          }
+//		      }
+//		  }
+//
+//		  for (int j = 0; j < 4; j++)
+//		  {
+//			  if (configs.sensors[j].enable)
+//			  {
+//				  adc[j] = (uint16_t)adc_sum[j];
+//			  }
+//		  }
+//		  send_sensor_data(adc);
+//		  aux = 0;
+//	  }
 
-		  for (int j = 0; j < 4; j++)
-		  {
-			  if (configs.sensors[j].enable)
-			  {
-				  adc[j] = (uint16_t)adc_sum[j];
-			  }
-		  }
-		  send_sensor_data(adc);
-		  aux = 0;
-	  }
+		if (aux)
+		{
+			calculate_analog(sensorData);
+			calculate_RMS(sensorData);
+			calculate_Phase(sensorData);
+
+			aux = 0;
+		}
+
+
 
     /* USER CODE BEGIN 3 */
   }
@@ -212,23 +229,27 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 
+
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	if(htim->Instance==TIM2)
 	{
-		if (adc_count < 199)
+		if (adc_count < SAMPLES_PER_TIME)
 		{
-			sensorData[0][adc_count] = adcint[0];
-			sensorData[1][adc_count] = adcint[1];
-//			sensorData[2][adc_count] = adcint[2];
-//			sensorData[3][adc_count] = adcint[3];
+			sensorData.sensorData_buf[VA][adc_count] = bufferTensaoVA[adc_count];
+			sensorData.sensorData_buf[VB][adc_count] = bufferTensaoVB[adc_count];
+			sensorData.sensorData_buf[VC][adc_count] = bufferTensaoVC[adc_count];
 			adc_count++;
+			if (adc_count == 64)
+			{
+				memcpy(sensorData.sensorData_buf , sensorData.sensorData_cpy, sizeof(sensorData.sensorData_buf));
+				aux = 1;
+				adc_count = 0;
+			}
+
 		}
-		else
-		{
-			aux = 1;
-			adc_count = 0;
-		}
+
 	}
 }
 
@@ -243,40 +264,16 @@ void send_sensor_data(uint16_t *adc)
 {
 	uint8_t count = 0;
 	CanPacket message = {0};
-	for (int i = 0; i < SENSOR_NUMBERS ; i++)
-	{
-		if(configs.sensors[i].enable)
-		{
-			message.packet.ctrl0.control = configs.boardID;
-			message.packet.ctrl1.control = 0; //revisar
-			fill_data(&message, adc[i], count, i);
+	message.packet.ctrl0.control = configs.boardID;
+	message.packet.ctrl1.control = 0; //revisar
+//	fill_data(&message, adc[i], count, i);
 
-			TxHeader.StdId             = DATA;     // ID do dispositivo
-			TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
-			TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
-			TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
-			TxHeader.TransmitGlobalTime = DISABLE;
-			count++;
-		}
-		if (count == 2)
-		{
-			if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, message.packet.data, &TxMailbox))
-			{
-				Error_Handler();
-			}
-			memset(&message, 0, sizeof(CanPacket));
-			count = 0;
-		}
-		else if ( (count == 1) && (i == (SENSOR_NUMBERS - 1) ) )
-		{
-			fill_data(&message, 0xffff, count, 2);
+	TxHeader.StdId             = DEVICE_1;     // ID do dispositivo
+	TxHeader.RTR               = CAN_RTR_DATA;       //(Remote Transmission Request) especifica Remote Fraame ou Data Frame.
+	TxHeader.IDE               = CAN_ID_STD;    //define o tipo de id (standard ou extended
+	TxHeader.DLC               = 8;      //Tamanho do pacote 0 - 8 bytes
+	TxHeader.TransmitGlobalTime = DISABLE;
 
-			if(HAL_CAN_AddTxMessage(&hcan, &TxHeader, message.packet.data, &TxMailbox))
-			{
-				Error_Handler();
-			}
-		}
-	}
 }
 
 
@@ -284,9 +281,7 @@ void send_sensor_data(uint16_t *adc)
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-#ifdef TRANSMITER
 
-#else
 //	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 
 	UartPacket uartPacket = {0};
@@ -297,7 +292,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 
 //	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-#endif
+
 
 }
 
@@ -317,6 +312,38 @@ void sendCanMsg_test(int delay)
 	  }
 	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 	  HAL_Delay(delay);
+}
+
+
+void calculate_analog(SensorData *data)
+{
+	for (int i = 0; i < SAMPLES_PER_TIME; i++)
+	{
+		data->sensorData_values[VA][i] = (( data->sensorData_cpy[VA][i] * MAX_ADC ) * MAX_ANALOG - OFFSET) * CORRECTION_FACTOR;
+		data->sensorData_values[VB][i] = (( data->sensorData_cpy[VB][i] * MAX_ADC ) * MAX_ANALOG - OFFSET) * CORRECTION_FACTOR;
+		data->sensorData_values[VC][i] = (( data->sensorData_cpy[VC][i] * MAX_ADC ) * MAX_ANALOG - OFFSET) * CORRECTION_FACTOR;
+	}
+}
+
+void calculate_RMS(SensorData *data)
+{
+	float sum_square[3] = {0};
+	float RMS[3] = {0};
+
+	for (int i = 0; i < SAMPLES_PER_TIME; i++)
+	{
+		sum_square[VA] += data->sensorData_values[VA][i];
+		sum_square[VB] += data->sensorData_values[VB][i];
+	    sum_square[VC] += data->sensorData_values[VC][i];
+	}
+	RMS[VA] = sqrt(sum_square[VA] / SAMPLES_PER_TIME);
+	RMS[VB] = sqrt(sum_square[VB] / SAMPLES_PER_TIME);
+	RMS[VC] = sqrt(sum_square[VC] / SAMPLES_PER_TIME);
+}
+
+void calculate_Phase(SensorData *data)
+{
+
 }
 
 /* USER CODE END 4 */

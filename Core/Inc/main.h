@@ -41,6 +41,29 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+#define MAX_ADC 4096
+#define MAX_ANALOG 3.3
+
+#define VA 0
+#define VB 1
+#define VC 2
+
+
+typedef struct _signalQ
+{
+	float mod  [12];
+	float phase[12];
+	float freq [12];
+
+}SignalQ;
+
+typedef struct _sensorData
+{
+	uint16_t sensorData_cpy[3][64];
+	uint16_t sensorData_buf[3][64]; // seria implementar em uma fila do RTOS
+	float sensorData_values[3][64];
+}SensorData;
+
 
 /* USER CODE END ET */
 
